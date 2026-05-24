@@ -5,9 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cuaca GPS - Lokasi Real-time</title>
   <style>
-    :root {
-      --primary: #4a9eff;
-    }
+    :root { --primary: #4a9eff; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Segoe UI', Arial, sans-serif;
@@ -24,15 +22,8 @@
       box-shadow: 0 10px 30px rgba(0,0,0,0.2);
       overflow: hidden;
     }
-    header {
-      background: var(--primary);
-      color: white;
-      padding: 20px;
-      text-align: center;
-    }
-    .content {
-      padding: 25px;
-    }
+    header { background: var(--primary); color: white; padding: 20px; text-align: center; }
+    .content { padding: 25px; }
     button {
       padding: 12px 20px;
       font-size: 1rem;
@@ -41,28 +32,11 @@
       cursor: pointer;
       margin: 8px 5px;
     }
-    #btnLokasi {
-      background: #00b894;
-      color: white;
-      width: 100%;
-      font-weight: bold;
-    }
-    .search {
-      display: flex;
-      gap: 10px;
-      margin: 20px 0;
-    }
-    input {
-      flex: 1;
-      padding: 14px;
-      border: 2px solid #ddd;
-      border-radius: 10px;
-      font-size: 1rem;
-    }
-    #btnCari {
-      background: var(--primary);
-      color: white;
-    }
+    #btnLokasi { background: #00b894; color: white; width: 100%; font-weight: bold; }
+    .search { display: flex; gap: 10px; margin: 20px 0; }
+    input { flex: 1; padding: 14px; border: 2px solid #ddd; border-radius: 10px; font-size: 1rem; }
+    #btnCari { background: var(--primary); color: white; }
+    select { padding: 12px; border-radius: 10px; border: 2px solid #ddd; }
     #cuaca {
       margin-top: 20px;
       padding: 20px;
@@ -70,33 +44,32 @@
       border-radius: 15px;
       text-align: center;
     }
-    .info {
-      font-size: 0.9rem;
-      color: #666;
-      margin-top: 10px;
-    }
-    .loading {
-      text-align: center;
-      padding: 20px;
-      color: #0984e3;
-    }
-    h1 { font-size: 2rem; margin-bottom: 5px; }
-    .temp { font-size: 3.5rem; font-weight: bold; margin: 10px 0; }
+    .temp { font-size: 3.8rem; font-weight: bold; margin: 10px 0; }
+    .info { font-size: 0.9rem; color: #666; margin-top: 15px; }
+    .loading { padding: 20px; color: #0984e3; }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
       <h1>🌤️ Cuaca GPS</h1>
-      <p>Lihat cuaca sesuai lokasi Anda</p>
+      <p>Lokasi Real-time • Multiple Sumber</p>
     </header>
 
     <div class="content">
-      <button id="btnLokasi">📍 Gunakan Lokasi Saya Saat Ini</button>
+      <button id="btnLokasi">📍 Gunakan Lokasi Saya</button>
 
       <div class="search">
-        <input type="text" id="inputLokasi" placeholder="Cari kota atau alamat... (contoh: Bandung)">
+        <input type="text" id="inputLokasi" placeholder="Cari kota... (contoh: Sragen)">
         <button id="btnCari">Cari</button>
+      </div>
+
+      <div style="margin:15px 0;">
+        <label>Sumber Cuaca: </label>
+        <select id="apiSource">
+          <option value="openmeteo">Open-Meteo (Default)</option>
+          <option value="openweather">OpenWeatherMap</option>
+        </select>
       </div>
 
       <div id="infoKoordinat" class="info"></div>
@@ -105,110 +78,98 @@
   </div>
 
   <script>
+    // Ganti dengan API Key OpenWeatherMap kamu nanti
+    const OPENWEATHER_API_KEY = ""; // ← Isi di sini kalau sudah punya
+
     const btnLokasi = document.getElementById('btnLokasi');
     const btnCari = document.getElementById('btnCari');
     const inputLokasi = document.getElementById('inputLokasi');
     const cuacaDiv = document.getElementById('cuaca');
     const infoKoordinat = document.getElementById('infoKoordinat');
+    const apiSource = document.getElementById('apiSource');
 
-    // Weather Code Description (Open-Meteo WMO)
-    const weatherDesc = {
-      0: "☀️ Cerah", 1: "⛅ Cerah Berawan", 2: "⛅ Berawan", 3: "☁️ Mendung",
-      45: "🌫️ Kabut", 48: "🌫️ Kabut Beku",
-      51: "🌧️ Hujan Ringan", 53: "🌧️ Hujan Ringan", 55: "🌧️ Hujan Sedang",
-      61: "🌧️ Hujan", 63: "🌧️ Hujan Sedang", 65: "🌧️ Hujan Lebat",
-      71: "❄️ Salju Ringan", 73: "❄️ Salju", 75: "❄️ Salju Lebat",
-      80: "🌦️ Hujan Lokal", 81: "🌧️ Hujan Lokal", 82: "⛈️ Hujan Lebat Lokal",
-      95: "⛈️ Badai Petir", 96: "⛈️ Badai Petir dengan Hujan Es", 99: "⛈️ Badai Petir Hebat"
+    const weatherDesc = { /* sama seperti sebelumnya */ 
+      0: "☀️ Cerah", 1:"⛅ Cerah Berawan", 2:"⛅ Berawan", 3:"☁️ Mendung",
+      45:"🌫️ Kabut", 51:"🌧️ Hujan Ringan", 61:"🌧️ Hujan", 63:"🌧️ Hujan Sedang",
+      71:"❄️ Salju", 80:"🌦️ Hujan Lokal", 95:"⛈️ Badai Petir"
     };
 
     async function ambilCuaca(lat, lon, namaLokasi = '') {
       cuacaDiv.innerHTML = `<div class="loading">⏳ Mengambil data cuaca...</div>`;
+      const source = apiSource.value;
 
       try {
-        const res = await fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-          `&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m` +
-          `&timezone=auto`
-        );
-        
-        const data = await res.json();
-        const current = data.current;
+        let data, current, desc;
 
-        const desc = weatherDesc[current.weather_code] || "Cuaca Tidak Diketahui";
+        if (source === "openmeteo") {
+          const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`);
+          data = await res.json();
+          current = data.current;
+          desc = weatherDesc[current.weather_code] || "Cuaca Tidak Diketahui";
+        } else {
+          // OpenWeatherMap
+          if (!OPENWEATHER_API_KEY) {
+            alert("Masukkan OpenWeatherMap API Key terlebih dahulu!");
+            return;
+          }
+          const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${OPENWEATHER_API_KEY}&units=metric&lang=id`);
+          data = await res.json();
+          current = data.main;
+          desc = data.weather[0].description;
+        }
 
         cuacaDiv.innerHTML = `
           <h2>${namaLokasi || 'Lokasi Saat Ini'}</h2>
-          <div class="temp">${current.temperature_2m}°C</div>
-          <p style="font-size:1.3rem; margin:10px 0;">${desc}</p>
-          
-          <p><strong>Terasa seperti:</strong> ${current.apparent_temperature}°C</p>
-          <p><strong>Kelembaban:</strong> ${current.relative_humidity_2m}%</p>
-          <p><strong>Angin:</strong> ${current.wind_speed_10m} km/jam</p>
-          
-          <div class="info">
-            Koordinat: ${lat.toFixed(4)}, ${lon.toFixed(4)}
-          </div>
+          <div class="temp">${Math.round(current.temperature_2m || current.temp)}°C</div>
+          <p style="font-size:1.3rem;">${desc}</p>
+          <p><strong>Terasa seperti:</strong> ${Math.round(current.apparent_temperature || current.feels_like)}°C</p>
+          <p><strong>Kelembaban:</strong> ${current.relative_humidity_2m || current.humidity}%</p>
+          <p><strong>Angin:</strong> ${current.wind_speed_10m || current.wind?.speed * 3.6 || 0} km/jam</p>
+          <div class="info">Koordinat: ${lat.toFixed(4)}, ${lon.toFixed(4)} • ${source}</div>
         `;
       } catch (err) {
-        cuacaDiv.innerHTML = `<p style="color:red;">❌ Gagal mengambil data cuaca. Coba lagi.</p>`;
+        cuacaDiv.innerHTML = `<p style="color:red;">❌ Gagal mengambil data. Coba ganti sumber cuaca.</p>`;
       }
     }
 
-    // Gunakan Lokasi GPS
+    // Fungsi GPS dan pencarian tetap sama seperti kode sebelumnya...
     btnLokasi.addEventListener('click', () => {
-      if (!navigator.geolocation) {
-        alert("Browser Anda tidak mendukung GPS.");
-        return;
-      }
-
-      btnLokasi.textContent = "📍 Mencari lokasi...";
+      if (!navigator.geolocation) return alert("Browser tidak mendukung GPS");
       
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const lat = position.coords.latitude;
-          const lon = position.coords.longitude;
-          
-          infoKoordinat.textContent = `Lokasi Anda: ${lat.toFixed(4)}, ${lon.toFixed(4)}`;
-          ambilCuaca(lat, lon, "Lokasi Anda Saat Ini");
-          btnLokasi.textContent = "📍 Gunakan Lokasi Saya Saat Ini";
-        },
-        () => {
-          alert("Gagal mendapatkan lokasi. Pastikan Anda mengizinkan akses GPS.");
-          btnLokasi.textContent = "📍 Gunakan Lokasi Saya Saat Ini";
-        }
-      );
+      btnLokasi.textContent = "📍 Mencari lokasi...";
+      navigator.geolocation.getCurrentPosition(pos => {
+        const { latitude, longitude } = pos.coords;
+        infoKoordinat.textContent = `Lokasi Anda: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+        ambilCuaca(latitude, longitude, "Lokasi Anda");
+        btnLokasi.textContent = "📍 Gunakan Lokasi Saya";
+      }, () => {
+        alert("Gagal mendapatkan lokasi GPS");
+        btnLokasi.textContent = "📍 Gunakan Lokasi Saya";
+      });
     });
 
-    // Cari berdasarkan nama lokasi
     btnCari.addEventListener('click', async () => {
       const query = inputLokasi.value.trim();
-      if (!query) return alert("Masukkan nama kota atau alamat!");
+      if (!query) return alert("Masukkan nama lokasi!");
 
-      cuacaDiv.innerHTML = `<div class="loading">🔍 Mencari lokasi...</div>`;
+      cuacaDiv.innerHTML = `<div class="loading">🔍 Mencari ${query}...</div>`;
 
       try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`
-        );
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
         const data = await res.json();
-
-        if (data && data.length > 0) {
+        if (data.length > 0) {
           const { lat, lon, display_name } = data[0];
           infoKoordinat.innerHTML = `📍 ${display_name}`;
           ambilCuaca(parseFloat(lat), parseFloat(lon), display_name);
         } else {
-          cuacaDiv.innerHTML = `<p style="color:orange;">❓ Lokasi tidak ditemukan.</p>`;
+          cuacaDiv.innerHTML = `<p>Lokasi tidak ditemukan.</p>`;
         }
       } catch (e) {
-        cuacaDiv.innerHTML = `<p style="color:red;">❌ Gagal mencari lokasi.</p>`;
+        cuacaDiv.innerHTML = `<p style="color:red;">Gagal mencari lokasi.</p>`;
       }
     });
 
-    // Tekan Enter di input
-    inputLokasi.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') btnCari.click();
-    });
+    inputLokasi.addEventListener('keypress', e => { if (e.key === 'Enter') btnCari.click(); });
   </script>
 </body>
 </html>
